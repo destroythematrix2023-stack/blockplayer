@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -8,20 +9,22 @@ local function BlockPlayer(player)
         pcall(function()
             StarterGui:SetCore("BlockPlayer", player.UserId)
         end)
+        print("Blocked:", player.Name)
     end
 end
 
 local function GetTradePartner()
-    local tradeGui = LocalPlayer.PlayerGui:FindFirstChild("TradeApp")
-    if not tradeGui then return end
+    local Fsys = require(ReplicatedStorage:WaitForChild("Fsys"))
+    local load = Fsys.load
+    local UIManager = load("UIManager")
 
-    local name = tradeGui.Frame.NegotiationFrame.Header.PartnerFrame.NameLabel.Text
+    if not UIManager then return end
 
-    for _,p in pairs(Players:GetPlayers()) do
-        if p.Name:lower() == name:lower() then
-            return p
-        end
-    end
+    local TradeApp = UIManager.apps.TradeApp
+    if not TradeApp then return end
+
+    local partner = TradeApp:_get_partner()
+    return partner
 end
 
 local gui = Instance.new("ScreenGui")
@@ -42,5 +45,9 @@ button.Parent = frame
 
 button.MouseButton1Click:Connect(function()
     local partner = GetTradePartner()
-    BlockPlayer(partner)
+    if partner then
+        BlockPlayer(partner)
+    else
+        warn("No trade partner detected")
+    end
 end)
