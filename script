@@ -1,0 +1,83 @@
+```lua
+-- Auto Block Current Trade Partner (Adopt Me)
+
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+
+pcall(function()
+    if setthreadidentity then
+        setthreadidentity(2)
+    end
+end)
+
+local LocalPlayer = Players.LocalPlayer
+
+-- block function
+local function BlockPlayer(player)
+    if not player then
+        warn("Player not found")
+        return
+    end
+
+    pcall(function()
+        StarterGui:SetCore("BlockPlayer", player.UserId)
+    end)
+
+    print("Blocked:", player.Name)
+end
+
+-- get trade partner from trade GUI
+local function GetTradePartner()
+    local tradeGui = LocalPlayer.PlayerGui:FindFirstChild("TradeApp")
+
+    if not tradeGui then
+        warn("Trade GUI not found")
+        return nil
+    end
+
+    local nameLabel = tradeGui.Frame.NegotiationFrame.Header.PartnerFrame.NameLabel
+    local name = nameLabel.Text
+
+    for _,plr in pairs(Players:GetPlayers()) do
+        if plr.Name:lower() == name:lower() then
+            return plr
+        end
+    end
+
+    return nil
+end
+
+-- simple GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "TradeBlocker"
+gui.ResetOnSpawn = false
+gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,180,0,50)
+frame.Position = UDim2.new(0,20,0,20)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,40)
+frame.Parent = gui
+
+Instance.new("UICorner", frame)
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1,-10,1,-10)
+button.Position = UDim2.new(0,5,0,5)
+button.Text = "Block Trade Partner"
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 16
+button.Parent = frame
+
+Instance.new("UICorner", button)
+
+button.MouseButton1Click:Connect(function()
+    local partner = GetTradePartner()
+
+    if partner then
+        BlockPlayer(partner)
+    else
+        warn("No trade partner detected")
+    end
+end)
+```
