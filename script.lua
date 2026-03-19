@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
--- BLOCK FUNCTION (auto confirms UI)
+-- BLOCK FUNCTION
 local function BlockPlayer(player)
     if not player then return end
 
@@ -18,8 +18,9 @@ local function BlockPlayer(player)
     repeat RunService.Heartbeat:Wait()
     until CoreGui:FindFirstChild("BlockingModalScreen")
 
-    local button = CoreGui.BlockingModalScreen
-        .BlockingModalContainer.BlockingModalContainerWrapper
+    local modal = CoreGui.BlockingModalScreen
+    local button = modal.BlockingModalContainer
+        .BlockingModalContainerWrapper
         .BlockingModal.AlertModal.AlertContents.Footer.Buttons["3"]
 
     GuiService.SelectedObject = button
@@ -36,57 +37,52 @@ local function BlockPlayer(player)
 end
 
 -- UI
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = game.CoreGui
+local gui = Instance.new("ScreenGui", CoreGui)
+gui.Name = "BlockUI"
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 300)
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 220, 0, 320)
 frame.Position = UDim2.new(0, 10, 0, 10)
-frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-frame.Parent = screenGui
+frame.BackgroundColor3 = Color3.fromRGB(25,25,35)
 
-local scrolling = Instance.new("ScrollingFrame")
-scrolling.Size = UDim2.new(1, 0, 1, 0)
-scrolling.CanvasSize = UDim2.new(0,0,0,0)
-scrolling.ScrollBarThickness = 6
-scrolling.Parent = frame
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Size = UDim2.new(1, 0, 1, 0)
+scroll.CanvasSize = UDim2.new(0,0,0,0)
+scroll.ScrollBarThickness = 6
 
-local layout = Instance.new("UIListLayout")
-layout.Parent = scrolling
+local layout = Instance.new("UIListLayout", scroll)
 
 -- CREATE BUTTON
-local function createPlayerButton(player)
+local function createButton(player)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -6, 0, 30)
+    btn.Size = UDim2.new(1, -6, 0, 28)
     btn.Text = player.Name
-    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    btn.BackgroundColor3 = Color3.fromRGB(50,50,60)
     btn.TextColor3 = Color3.new(1,1,1)
-    btn.Parent = scrolling
+    btn.Parent = scroll
 
     btn.MouseButton1Click:Connect(function()
         BlockPlayer(player)
     end)
 end
 
--- REFRESH LIST
-local function refreshList()
-    for _, child in ipairs(scrolling:GetChildren()) do
-        if child:IsA("TextButton") then
-            child:Destroy()
+-- REFRESH
+local function refresh()
+    for _, v in ipairs(scroll:GetChildren()) do
+        if v:IsA("TextButton") then
+            v:Destroy()
         end
     end
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        createPlayerButton(player)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        createButton(plr)
     end
 
     task.wait()
-    scrolling.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y)
+    scroll.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y)
 end
 
--- INITIAL LOAD
-refreshList()
+refresh()
 
--- AUTO UPDATE
-Players.PlayerAdded:Connect(refreshList)
-Players.PlayerRemoving:Connect(refreshList)
+Players.PlayerAdded:Connect(refresh)
+Players.PlayerRemoving:Connect(refresh)
