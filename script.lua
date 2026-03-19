@@ -4,20 +4,21 @@ local StarterGui = game:GetService("StarterGui")
 local CoreGui = game:GetService("CoreGui")
 local GuiService = game:GetService("GuiService")
 local Vim = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
---// 👻 DESTROY ROBLOX BLOCK UI INSTANTLY
+--// 👻 ANTI POPUP LOOP (LIGHT)
 task.spawn(function()
     while true do
         local modal = CoreGui:FindFirstChild("BlockingModalScreen")
         if modal then
-            modal:Destroy()
+            modal.Enabled = false
         end
         task.wait()
     end
 end)
 
---// ⚡ BLOCK FUNCTION
+--// 💀 SUPER AGGRESSIVE BLOCK FUNCTION
 local function BlockPlayer(player)
     if not player then return end
 
@@ -25,11 +26,38 @@ local function BlockPlayer(player)
 
     StarterGui:SetCore("PromptBlockPlayer", player)
 
-    -- instant confirm
-    Vim:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-    Vim:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+    local modal
+    repeat
+        modal = CoreGui:FindFirstChild("BlockingModalScreen")
+        RunService.RenderStepped:Wait()
+    until modal
+
+    -- FIND BUTTON
+    local button = modal.BlockingModalContainer
+        .BlockingModalContainerWrapper
+        .BlockingModal.AlertModal.AlertContents.Footer.Buttons["3"]
+
+    -- 👻 HIDE UI IMMEDIATELY
+    for _,v in pairs(modal:GetDescendants()) do
+        if v:IsA("GuiObject") then
+            v.Visible = false
+        end
+    end
+
+    -- 💥 SPAM CONFIRM (guaranteed click)
+    for i = 1,5 do
+        GuiService.SelectedObject = button
+
+        Vim:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+        Vim:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+
+        RunService.RenderStepped:Wait()
+    end
 
     GuiService.SelectedObject = nil
+
+    -- 💀 DESTROY AFTER CONFIRM
+    modal:Destroy()
 
     pcall(function() setthreadidentity(2) end)
 end
@@ -67,7 +95,7 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 title.TextColor3 = Color3.new(1,1,1)
 
---// 🔽 DROPDOWN BUTTON
+-- DROPDOWN
 local dropdown = Instance.new("TextButton", frame)
 dropdown.Size = UDim2.new(1,-20,0,35)
 dropdown.Position = UDim2.new(0,10,0,35)
@@ -121,8 +149,7 @@ local function createPlayerButton(plr)
     btn.MouseButton1Click:Connect(function()
         selectedPlayer = plr
         dropdown.Text = plr.Name .. " ▲"
-        
-        -- close dropdown
+
         open = false
         TweenService:Create(list, TweenInfo.new(0.2), {
             Size = UDim2.new(1,-20,0,0)
@@ -146,7 +173,7 @@ local function refresh()
     list.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y)
 end
 
--- DROPDOWN TOGGLE
+-- TOGGLE
 dropdown.MouseButton1Click:Connect(function()
     open = not open
 
@@ -166,12 +193,11 @@ dropdown.MouseButton1Click:Connect(function()
     end
 end)
 
--- BLOCK BUTTON CLICK
+-- BLOCK CLICK
 blockBtn.MouseButton1Click:Connect(function()
     if selectedPlayer then
         BlockPlayer(selectedPlayer)
 
-        -- 🟢 success animation
         blockBtn.Text = "Blocked!"
         TweenService:Create(blockBtn, TweenInfo.new(0.2), {
             BackgroundColor3 = Color3.fromRGB(60,200,100)
