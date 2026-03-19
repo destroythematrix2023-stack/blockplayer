@@ -1,13 +1,23 @@
--- SERVICES
+--// SERVICES
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 local Vim = game:GetService("VirtualInputManager")
 local TweenService = game:GetService("TweenService")
 
--- 🔒 INVISIBLE BLOCK (STRONGER)
+--// 👻 DESTROY ROBLOX BLOCK UI INSTANTLY
+task.spawn(function()
+    while true do
+        local modal = CoreGui:FindFirstChild("BlockingModalScreen")
+        if modal then
+            modal:Destroy()
+        end
+        task.wait()
+    end
+end)
+
+--// ⚡ BLOCK FUNCTION
 local function BlockPlayer(player)
     if not player then return end
 
@@ -15,46 +25,25 @@ local function BlockPlayer(player)
 
     StarterGui:SetCore("PromptBlockPlayer", player)
 
-    local modal
-    repeat
-        modal = CoreGui:FindFirstChild("BlockingModalScreen")
-        RunService.RenderStepped:Wait()
-    until modal
-
-    -- 💀 FORCE HIDE EVERYTHING BEFORE RENDER
-    for _,v in pairs(modal:GetDescendants()) do
-        if v:IsA("Frame") or v:IsA("TextLabel") or v:IsA("TextButton") then
-            v.Visible = false
-        end
-    end
-
-    local button = modal.BlockingModalContainer
-        .BlockingModalContainerWrapper
-        .BlockingModal.AlertModal.AlertContents.Footer.Buttons["3"]
-
-    GuiService.SelectedObject = button
-
+    -- instant confirm
     Vim:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
     Vim:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
 
     GuiService.SelectedObject = nil
 
-    modal:Destroy() -- completely remove
-
     pcall(function() setthreadidentity(2) end)
 end
 
--- 🎨 GUI
+--// 🎨 GUI
 local gui = Instance.new("ScreenGui", CoreGui)
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 240, 0, 60)
-frame.Position = UDim2.new(0, 20, 0, 20)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,30)
+frame.Size = UDim2.new(0, 260, 0, 150)
+frame.Position = UDim2.new(0.5, -130, 0.5, -75)
+frame.BackgroundColor3 = Color3.fromRGB(15,15,25)
 frame.Active = true
 frame.Draggable = true
-
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,12)
 
 -- 🌈 RGB BORDER
 local stroke = Instance.new("UIStroke", frame)
@@ -69,85 +58,135 @@ task.spawn(function()
     end
 end)
 
--- 🔽 DROPDOWN BUTTON
-local toggle = Instance.new("TextButton", frame)
-toggle.Size = UDim2.new(1,-20,0,30)
-toggle.Position = UDim2.new(0,10,0,15)
-toggle.Text = "Select Player ▼"
-toggle.Font = Enum.Font.GothamSemibold
-toggle.TextSize = 14
-toggle.BackgroundColor3 = Color3.fromRGB(45,45,65)
-toggle.TextColor3 = Color3.new(1,1,1)
+-- TITLE
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,30)
+title.BackgroundTransparency = 1
+title.Text = "Block Player"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.TextColor3 = Color3.new(1,1,1)
 
-Instance.new("UICorner", toggle).CornerRadius = UDim.new(0,8)
+--// 🔽 DROPDOWN BUTTON
+local dropdown = Instance.new("TextButton", frame)
+dropdown.Size = UDim2.new(1,-20,0,35)
+dropdown.Position = UDim2.new(0,10,0,35)
+dropdown.Text = "Select Player ▼"
+dropdown.Font = Enum.Font.Gotham
+dropdown.TextSize = 14
+dropdown.BackgroundColor3 = Color3.fromRGB(35,35,50)
+dropdown.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0,8)
 
--- 📜 DROPDOWN LIST
-local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Position = UDim2.new(0,10,0,50)
-scroll.Size = UDim2.new(1,-20,0,0) -- closed
-scroll.CanvasSize = UDim2.new(0,0,0,0)
-scroll.ScrollBarThickness = 4
-scroll.BackgroundTransparency = 1
-scroll.Visible = false
+-- LIST
+local list = Instance.new("ScrollingFrame", frame)
+list.Position = UDim2.new(0,10,0,75)
+list.Size = UDim2.new(1,-20,0,0)
+list.CanvasSize = UDim2.new(0,0,0,0)
+list.ScrollBarThickness = 4
+list.BackgroundTransparency = 1
+list.Visible = false
 
-local layout = Instance.new("UIListLayout", scroll)
-layout.Padding = UDim.new(0,6)
+local layout = Instance.new("UIListLayout", list)
+layout.Padding = UDim.new(0,5)
 
-local opened = false
+-- BLOCK BUTTON
+local blockBtn = Instance.new("TextButton", frame)
+blockBtn.Size = UDim2.new(1,-20,0,35)
+blockBtn.Position = UDim2.new(0,10,1,-45)
+blockBtn.Text = "Block"
+blockBtn.Font = Enum.Font.GothamBold
+blockBtn.TextSize = 14
+blockBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+blockBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", blockBtn).CornerRadius = UDim.new(0,8)
 
--- 🎯 BUTTON CREATION
-local function createButton(player)
+-- STATE
+local selectedPlayer = nil
+local open = false
+
+-- CREATE PLAYER BUTTON
+local function createPlayerButton(plr)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1,0,0,28)
-    btn.Text = player.Name
-    btn.BackgroundColor3 = Color3.fromRGB(50,50,70)
+    btn.Text = plr.Name
+    btn.BackgroundColor3 = Color3.fromRGB(45,45,65)
     btn.TextColor3 = Color3.new(1,1,1)
     btn.Font = Enum.Font.Gotham
     btn.TextSize = 13
-    btn.Parent = scroll
+    btn.Parent = list
 
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
 
     btn.MouseButton1Click:Connect(function()
-        BlockPlayer(player)
+        selectedPlayer = plr
+        dropdown.Text = plr.Name .. " ▲"
+        
+        -- close dropdown
+        open = false
+        TweenService:Create(list, TweenInfo.new(0.2), {
+            Size = UDim2.new(1,-20,0,0)
+        }):Play()
+        task.wait(0.2)
+        list.Visible = false
     end)
 end
 
--- 🔄 REFRESH
+-- REFRESH
 local function refresh()
-    for _,v in pairs(scroll:GetChildren()) do
+    for _,v in pairs(list:GetChildren()) do
         if v:IsA("TextButton") then v:Destroy() end
     end
 
     for _,plr in ipairs(Players:GetPlayers()) do
-        createButton(plr)
+        createPlayerButton(plr)
     end
 
     task.wait()
-    scroll.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y)
+    list.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y)
 end
 
--- 🔽 TOGGLE DROPDOWN
-toggle.MouseButton1Click:Connect(function()
-    opened = not opened
+-- DROPDOWN TOGGLE
+dropdown.MouseButton1Click:Connect(function()
+    open = not open
 
-    if opened then
-        scroll.Visible = true
-        TweenService:Create(scroll, TweenInfo.new(0.25), {
-            Size = UDim2.new(1,-20,0,200)
+    if open then
+        list.Visible = true
+        TweenService:Create(list, TweenInfo.new(0.25), {
+            Size = UDim2.new(1,-20,0,120)
         }):Play()
-        toggle.Text = "Select Player ▲"
+        dropdown.Text = "Select Player ▲"
     else
-        TweenService:Create(scroll, TweenInfo.new(0.25), {
+        TweenService:Create(list, TweenInfo.new(0.25), {
             Size = UDim2.new(1,-20,0,0)
         }):Play()
-        task.wait(0.25)
-        scroll.Visible = false
-        toggle.Text = "Select Player ▼"
+        task.wait(0.2)
+        list.Visible = false
+        dropdown.Text = "Select Player ▼"
     end
 end)
 
--- 🔁 AUTO UPDATE
+-- BLOCK BUTTON CLICK
+blockBtn.MouseButton1Click:Connect(function()
+    if selectedPlayer then
+        BlockPlayer(selectedPlayer)
+
+        -- 🟢 success animation
+        blockBtn.Text = "Blocked!"
+        TweenService:Create(blockBtn, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(60,200,100)
+        }):Play()
+
+        task.wait(1)
+
+        blockBtn.Text = "Block"
+        TweenService:Create(blockBtn, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(200,50,50)
+        }):Play()
+    end
+end)
+
+-- AUTO UPDATE
 Players.PlayerAdded:Connect(refresh)
 Players.PlayerRemoving:Connect(refresh)
 
