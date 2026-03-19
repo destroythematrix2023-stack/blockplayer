@@ -1,126 +1,92 @@
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local GuiService = game:GetService("GuiService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
-local LocalPlayer = Players.LocalPlayer
-local blocked = {}
+-- BLOCK FUNCTION (auto confirms UI)
+local function BlockPlayer(player)
+    if not player then return end
 
-local gui = Instance.new("ScreenGui")
-gui.ResetOnSpawn = false
-gui.Parent = LocalPlayer.PlayerGui
+    pcall(function()
+        setthreadidentity(8)
+    end)
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,150,0,55)
-frame.Position = UDim2.new(0,200,0,200)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,30)
-frame.Parent = gui
+    StarterGui:SetCore("PromptBlockPlayer", player)
 
-local dropdown = Instance.new("TextButton")
-dropdown.Size = UDim2.new(1,-10,0,20)
-dropdown.Position = UDim2.new(0,5,0,5)
-dropdown.Text = "Select Player"
-dropdown.Parent = frame
+    repeat RunService.Heartbeat:Wait()
+    until CoreGui:FindFirstChild("BlockingModalScreen")
 
-local blockBtn = Instance.new("TextButton")
-blockBtn.Size = UDim2.new(1,-10,0,20)
-blockBtn.Position = UDim2.new(0,5,0,30)
-blockBtn.Text = "Block"
-blockBtn.Parent = frame
+    local button = CoreGui.BlockingModalScreen
+        .BlockingModalContainer.BlockingModalContainerWrapper
+        .BlockingModal.AlertModal.AlertContents.Footer.Buttons["3"]
 
-local list = Instance.new("Frame")
-list.Position = UDim2.new(0,0,1,0)
-list.Size = UDim2.new(1,0,0,0)
-list.Visible = false
-list.Parent = frame
+    GuiService.SelectedObject = button
+    task.wait()
 
-local selected
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
 
-local function refresh()
-	for _,v in pairs(list:GetChildren()) do
-		if v:IsA("TextButton") then
-			v:Destroy()
-		end
-	end
+    GuiService.SelectedObject = nil
 
-	local y = 0
-	for _,p in pairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer then
-			local b = Instance.new("TextButton")
-			b.Size = UDim2.new(1,0,0,18)
-			b.Position = UDim2.new(0,0,0,y)
-			b.Text = p.Name
-			b.Parent = list
-
-			b.MouseButton1Click:Connect(function()
-				selected = p
-				dropdown.Text = p.Name
-				list.Visible = false
-			end)
-
-			y += 18
-		end
-	end
-
-	list.Size = UDim2.new(1,0,0,y)
+    pcall(function()
+        setthreadidentity(2)
+    end)
 end
 
-dropdown.MouseButton1Click:Connect(function()
-	list.Visible = not list.Visible
-end)
+-- UI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.CoreGui
 
-blockBtn.MouseButton1Click:Connect(function()
-	if selected then
-		blocked[selected.UserId] = true
-		print("Blocked:",selected.Name)
-	end
-end)
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 300)
+frame.Position = UDim2.new(0, 10, 0, 10)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.Parent = screenGui
 
-refresh()
+local scrolling = Instance.new("ScrollingFrame")
+scrolling.Size = UDim2.new(1, 0, 1, 0)
+scrolling.CanvasSize = UDim2.new(0,0,0,0)
+scrolling.ScrollBarThickness = 6
+scrolling.Parent = frame
 
-Players.PlayerAdded:Connect(refresh)
-Players.PlayerRemoving:Connect(refresh)
+local layout = Instance.new("UIListLayout")
+layout.Parent = scrolling
 
-task.spawn(function()
-	local Fsys = require(ReplicatedStorage:WaitForChild("Fsys"))
-	local load = Fsys.load
-	local RouterClient = load("RouterClient")
+-- CREATE BUTTON
+local function createPlayerButton(player)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -6, 0, 30)
+    btn.Text = player.Name
+    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Parent = scrolling
 
-	local tradeEvent = RouterClient.get_event("TradeAPI/TradeRequestReceived")
+    btn.MouseButton1Click:Connect(function()
+        BlockPlayer(player)
+    end)
+end
 
-	if tradeEvent then
-		tradeEvent.OnClientEvent:Connect(function(player)
-			if blocked[player.UserId] then
-				print("Ignored trade from",player.Name)
-				return
-			end
-		end)
-	end
-end)
+-- REFRESH LIST
+local function refreshList()
+    for _, child in ipairs(scrolling:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
 
--- draggable
-local dragging, dragStart, startPos
+    for _, player in ipairs(Players:GetPlayers()) do
+        createPlayerButton(player)
+    end
 
-frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = true
-		dragStart = input.Position
-		startPos = frame.Position
-	end
-end)
+    task.wait()
+    scrolling.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y)
+end
 
-frame.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = false
-	end
-end)
+-- INITIAL LOAD
+refreshList()
 
-frame.InputChanged:Connect(function(input)
-	if dragging then
-		local delta = input.Position - dragStart
-		frame.Position = UDim2.new(
-			startPos.X.Scale,
-			startPos.X.Offset + delta.X,
-			startPos.Y.Scale,
-			startPos.Y.Offset + delta.Y
-		)
-	end
-end)
+-- AUTO UPDATE
+Players.PlayerAdded:Connect(refreshList)
+Players.PlayerRemoving:Connect(refreshList)
